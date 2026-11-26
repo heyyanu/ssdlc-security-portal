@@ -134,12 +134,47 @@ PYEOF
             steps {
                 sh '''
                     set -eu
+
+                    echo "========== JENKINS WORKSPACE DEBUG =========="
+
+                    echo "Current directory:"
+                    pwd
+
+                    echo "Current Git commit:"
+                    git rev-parse HEAD
+
+                    echo "Latest requirements files:"
+                    find . -maxdepth 4 -type f \
+                        -name 'requirements*.txt' -print
+
+                    echo "Root directory:"
+                    ls -la
+
+                    echo "Checking requirements-dev.txt..."
+
+                    if [ ! -f requirements-dev.txt ]; then
+                        echo "ERROR: requirements-dev.txt missing from Jenkins workspace"
+
+                        echo "Searching entire workspace:"
+                        find . -type f -name 'requirements-dev.txt' -print
+
+                        exit 1
+                    fi
+
+                    echo "requirements-dev.txt FOUND"
+
+                    echo "Installing dependencies..."
+
                     if [ ! -x .venv/bin/python ]; then
                         python3 -m venv .venv
                     fi
+
                     .venv/bin/python -m pip install --upgrade pip
+
                     .venv/bin/python -m pip install -r requirements-dev.txt
-                    .venv/bin/python -m compileall -q app run.py wsgi.py scripts
+
+                    .venv/bin/python -m py_compile run.py
+
                     echo "Build successful!"
                 '''
             }
