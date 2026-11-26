@@ -12,7 +12,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/heyyanu/ssdlc-security-portal.git'
+                    url: 'https://github.com/heyyanu/ssdlc-cicd-pipeline.git'
                 script {
                     env.IMAGE_TAG = sh(
                         script: 'git rev-parse --short=7 HEAD',
@@ -456,23 +456,35 @@ control 'docker-service-running' do
   end
 end
 
-# Control 2: App container must be running
+# Control 2: The SSH deployment user can inspect Docker with non-interactive sudo.
+# Ansible deploys with become: true, but InSpec SSH commands run as ec2-user.
+control 'docker-cli-access' do
+  impact 1.0
+  title 'Docker CLI is available to the deployment user through sudo'
+  desc 'The SSH user must be able to run Docker inspection commands with non-interactive sudo.'
+  describe command('sudo -n docker info') do
+    its('exit_status') { should eq 0 }
+  end
+end
+
+# Control 3: App container must be running. Use sudo because Docker commands
+# are privileged on the EC2 host and the InSpec SSH session runs as ec2-user.
 control 'app-container-running' do
   impact 1.0
   title 'Staging app container is running'
-  desc 'The ssdlc-app staging container must be in a running state.'
-  describe command('docker inspect -f {{.State.Running}} staging-app') do
+  desc 'The staging-app container must exist and be in a running state.'
+  describe command('sudo -n docker inspect -f "{{.State.Running}}" staging-app') do
     its('stdout.strip') { should eq 'true' }
     its('exit_status') { should eq 0 }
   end
 end
 
-# Control 3: Container must run as non-root
+# Control 4: Container must run as non-root
 control 'container-non-root-user' do
   impact 1.0
   title 'Container runs as non-root user'
-  desc 'The app container must not run as UID 0 (root).'
-  describe command("docker inspect -f '{{.Config.User}}' staging-app") do
+  desc 'The app container must run with an explicit non-root UID/GID.'
+  describe command('sudo -n docker inspect -f "{{.Config.User}}" staging-app') do
     its('stdout.strip') { should_not eq '' }
     its('stdout.strip') { should_not eq '0' }
     its('stdout.strip') { should_not eq 'root' }
