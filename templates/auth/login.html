@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Sign In{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-center" style="min-height:85vh;">
+  <div style="width:100%;max-width:420px;">
+
+    <div class="text-center mb-4">
+      <div style="font-size:3.5rem;color:#58a6ff;line-height:1;">
+        <i class="bi bi-shield-lock-fill"></i>
+      </div>
+      <h2 class="fw-bold mt-2 mb-0">SSDLC Portal</h2>
+      <p class="text-muted small mt-1">Secure Software Development Lifecycle</p>
+    </div>
+
+    <div class="card p-4 shadow-lg">
+      <h5 class="fw-semibold mb-3">Sign in to your account</h5>
+
+      <form method="POST" novalidate autocomplete="off">
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+          <label class="form-label">Username</label>
+          <div class="input-group">
+            <span class="input-group-text bg-transparent border-end-0">
+              <i class="bi bi-person text-muted"></i>
+            </span>
+            {{ form.username(class="form-control border-start-0 ps-0"
+                             + (" is-invalid" if form.username.errors else ""),
+                             placeholder="Your username",
+                             autocomplete="username") }}
+          </div>
+          {% for e in form.username.errors %}
+          <div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Password</label>
+          <div class="input-group">
+            <span class="input-group-text bg-transparent border-end-0">
+              <i class="bi bi-lock text-muted"></i>
+            </span>
+            {{ form.password(class="form-control border-start-0 border-end-0 ps-0"
+                             + (" is-invalid" if form.password.errors else ""),
+                             id="pwd", autocomplete="current-password",
+                             placeholder="••••••••••••") }}
+            <button class="btn btn-outline-secondary border-start-0" type="button"
+                    onclick="togglePwd()" tabindex="-1">
+              <i class="bi bi-eye" id="eye-icon"></i>
+            </button>
+          </div>
+          {% for e in form.password.errors %}
+          <div class="text-danger small mt-1">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div class="form-check">
+            {{ form.remember(class="form-check-input") }}
+            <label class="form-check-label text-muted small">{{ form.remember.label.text }}</label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+          <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+        </button>
+      </form>
+
+      <div class="text-center mt-3 text-muted small">
+        Don't have an account?
+        <a href="{{ url_for('auth.register') }}">Create one</a>
+      </div>
+    </div>
+
+    <div class="text-center text-muted small mt-3">
+      <i class="bi bi-lock-fill me-1"></i>
+      All sessions are encrypted and monitored.
+    </div>
+  </div>
+</div>
+
+<script>
+function togglePwd() {
+  const p = document.getElementById('pwd');
+  const i = document.getElementById('eye-icon');
+  p.type = p.type === 'password' ? 'text' : 'password';
+  i.className = p.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item">
+    <a href="{{ url_for('projects.project_detail', pid=project.id) }}">{{ project.name[:20] }}</a>
+  </li>
+  <li class="breadcrumb-item"><a href="{{ url_for('risks.list_risks', pid=project.id) }}">Risks</a></li>
+  <li class="breadcrumb-item active">{{ title }}</li>
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-8">
+  <div class="card p-4">
+    <h5 class="mb-3 fw-semibold"><i class="bi bi-exclamation-triangle me-2"></i>{{ title }}</h5>
+
+    <!-- Risk matrix hint -->
+    <div class="alert alert-secondary small mb-4 p-2">
+      <strong>Risk Score = Likelihood × Impact.</strong>
+      1–5 = Low &nbsp;|&nbsp; 6–11 = Medium &nbsp;|&nbsp;
+      12–19 = High &nbsp;|&nbsp; 20–25 = Critical
+    </div>
+
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="mb-3">
+        <label class="form-label">Risk Title <span class="text-danger">*</span></label>
+        {{ form.title(class="form-control"+(" is-invalid" if form.title.errors else ""),
+                      placeholder="e.g. Sensitive data exposed via unencrypted channel") }}
+        {% for e in form.title.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Description</label>
+        {{ form.description(class="form-control", rows=3,
+                            placeholder="Describe the risk in detail…") }}
+      </div>
+      <div class="row g-3 mb-2">
+        <div class="col-md-4">
+          <label class="form-label">Likelihood (1–5)</label>
+          {{ form.likelihood(class="form-control"+(" is-invalid" if form.likelihood.errors else ""),
+                             type="number", min=1, max=5) }}
+          {% for e in form.likelihood.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          <div class="form-text">1 = Rare · 5 = Almost certain</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Impact (1–5)</label>
+          {{ form.impact(class="form-control"+(" is-invalid" if form.impact.errors else ""),
+                         type="number", min=1, max=5) }}
+          {% for e in form.impact.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          <div class="form-text">1 = Negligible · 5 = Catastrophic</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Status</label>
+          {{ form.status(class="form-select") }}
+        </div>
+      </div>
+
+      <!-- Live score preview -->
+      <div id="score-preview" class="alert alert-secondary small mb-3">
+        Risk Score: <strong id="sv">—</strong>/25 &nbsp;|&nbsp; Level: <strong id="sl">—</strong>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label">Mitigation Strategy</label>
+        {{ form.mitigation(class="form-control", rows=3,
+                           placeholder="How will this risk be reduced or accepted?") }}
+      </div>
+      <div class="d-flex gap-2">
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('risks.list_risks', pid=project.id) }}" class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+</div>
+
+<script>
+const COLORS = {Critical:'danger',High:'warning',Medium:'primary',Low:'success'};
+function update() {
+  const l = +document.querySelector('[name=likelihood]').value || 0;
+  const i = +document.querySelector('[name=impact]').value    || 0;
+  const s = l * i;
+  let lv = '—', cls = 'secondary';
+  if      (s >= 20) { lv='Critical'; cls='danger'; }
+  else if (s >= 12) { lv='High';     cls='warning'; }
+  else if (s >= 6)  { lv='Medium';   cls='primary'; }
+  else if (s > 0)   { lv='Low';      cls='success'; }
+  document.getElementById('sv').textContent = s || '—';
+  document.getElementById('sl').textContent = lv;
+  document.getElementById('score-preview').className = `alert alert-${cls} small mb-3`;
+}
+document.querySelectorAll('[name=likelihood],[name=impact]').forEach(e => e.addEventListener('input', update));
+update();
+</script>
+{% endblock %}

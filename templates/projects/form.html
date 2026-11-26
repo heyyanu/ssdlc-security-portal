@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{{ url_for('projects.list_projects') }}">Projects</a></li>
+  <li class="breadcrumb-item active">{{ title }}</li>
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-7">
+  <div class="card p-4">
+    <h5 class="mb-4 fw-semibold"><i class="bi bi-folder-plus me-2"></i>{{ title }}</h5>
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="mb-3">
+        <label class="form-label">Project Name <span class="text-danger">*</span></label>
+        {{ form.name(class="form-control"+(" is-invalid" if form.name.errors else ""),
+                     placeholder="e.g. Payment Gateway v3") }}
+        {% for e in form.name.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Description</label>
+        {{ form.description(class="form-control", rows=4,
+                            placeholder="Describe the project scope and security objectives…") }}
+      </div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <label class="form-label">SDLC Phase</label>
+          {{ form.phase(class="form-select") }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Status</label>
+          {{ form.status(class="form-select") }}
+        </div>
+      </div>
+      <div class="d-flex gap-2">
+        {{ form.submit(class="btn btn-primary") }}
+        {% if project %}
+        <a href="{{ url_for('projects.project_detail', pid=project.id) }}"
+           class="btn btn-outline-secondary">Cancel</a>
+        {% else %}
+        <a href="{{ url_for('projects.list_projects') }}" class="btn btn-outline-secondary">Cancel</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+</div>
+{% endblock %}

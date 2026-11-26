@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block breadcrumb %}<li class="breadcrumb-item active">Dashboard</li>{% endblock %}
+{% block content %}
+
+<!-- ── Stat tiles ─────────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  {% set tiles = [
+    ('Total Projects', total_projects, 'bi-folder2-open',   'green',  '#3fb950'),
+    ('Open Findings',  open_findings,  'bi-bug',             'red',    '#da3633'),
+    ('Open Risks',     open_risks,     'bi-exclamation-triangle', 'yellow', '#d29922'),
+    ('Open Threats',   open_threats,   'bi-diagram-3',       'blue',   '#388bfd'),
+  ] %}
+  {% for label, val, icon, cls, col in tiles %}
+  <div class="col-sm-6 col-xl-3">
+    <div class="card stat-tile {{ cls }} p-3">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div class="text-muted small mb-1">{{ label }}</div>
+          <div class="fs-1 fw-bold lh-1">{{ val }}</div>
+        </div>
+        <i class="bi {{ icon }}" style="font-size:2.2rem;color:{{ col }};opacity:.45;"></i>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mb-3">
+  <!-- Finding severity bar chart -->
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-bar-chart-fill"></i> Finding Severity</div>
+      <div class="card-body py-3">
+        {% set sev_colors = {
+          'Critical':'#da3633','High':'#e3b341','Medium':'#388bfd',
+          'Low':'#3fb950','Informational':'#6e7681'} %}
+        {% for sev in severities %}
+        {% set cnt = sev_counts.get(sev, 0) %}
+        {% set pct = ((cnt / (open_findings or 1)) * 100)|round|int %}
+        <div class="mb-2">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="badge sev-{{ sev }} small">{{ sev }}</span>
+            <span class="text-muted small">{{ cnt }}</span>
+          </div>
+          <div style="height:6px;background:var(--border);border-radius:3px;">
+            <div style="width:{{ pct }}%;height:6px;border-radius:3px;
+                        background:{{ sev_colors[sev] }};transition:width .6s;"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Critical findings -->
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header justify-content-between">
+        <span><i class="bi bi-fire text-danger"></i> Critical Open Findings</span>
+        <a href="{{ url_for('projects.list_projects') }}"
+           class="btn btn-sm btn-outline-primary ms-auto">All Projects</a>
+      </div>
+      <div class="card-body p-0">
+        {% if critical %}
+        <table class="table table-hover mb-0">
+          <thead><tr><th class="ps-3">Title</th><th>Project</th><th>Reported</th></tr></thead>
+          <tbody>
+          {% for f in critical %}
+          <tr>
+            <td class="ps-3">
+              <a href="{{ url_for('findings.finding_detail', pid=f.project_id, fid=f.id) }}"
+                 class="fw-semibold text-danger">{{ f.title }}</a>
+            </td>
+            <td class="text-muted small">{{ f.project.name }}</td>
+            <td class="text-muted small">{{ f.created_at.strftime('%Y-%m-%d') }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted py-5">
+          <i class="bi bi-check-circle-fill text-success d-block fs-1 mb-2"></i>
+          No critical findings open.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent projects -->
+<div class="card">
+  <div class="card-header justify-content-between">
+    <span><i class="bi bi-clock-history"></i> Recent Projects</span>
+    <a href="{{ url_for('projects.new_project') }}" class="btn btn-sm btn-primary ms-auto">
+      <i class="bi bi-plus-lg"></i> New Project
+    </a>
+  </div>
+  <div class="card-body p-0">
+    {% if recent_projects %}
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th class="ps-3">Name</th><th>Phase</th><th>Status</th>
+          <th>Findings</th><th>Risks</th><th>Threats</th><th>Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in recent_projects %}
+      <tr>
+        <td class="ps-3">
+          <a href="{{ url_for('projects.project_detail', pid=p.id) }}" class="fw-semibold">
+            {{ p.name }}
+          </a>
+        </td>
+        <td><span class="badge bg-secondary">{{ p.phase }}</span></td>
+        <td>
+          {% if p.status == 'Active' %}<span class="badge bg-success">Active</span>
+          {% elif p.status == 'Completed' %}<span class="badge bg-info text-dark">Done</span>
+          {% elif p.status == 'On Hold' %}<span class="badge bg-warning text-dark">On Hold</span>
+          {% else %}<span class="badge bg-secondary">{{ p.status }}</span>{% endif %}
+        </td>
+        <td class="text-center">{{ p.findings.count() }}</td>
+        <td class="text-center">{{ p.risk_assessments.count() }}</td>
+        <td class="text-center">{{ p.threat_models.count() }}</td>
+        <td class="text-muted small">{{ p.updated_at.strftime('%Y-%m-%d') }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="text-center text-muted py-5">
+      <i class="bi bi-folder-plus d-block fs-1 mb-2"></i>
+      No projects yet.
+      <a href="{{ url_for('projects.new_project') }}">Create one</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Audit tail (admin only) -->
+{% if current_user.role == 'admin' and recent_audit %}
+<div class="card mt-3">
+  <div class="card-header justify-content-between">
+    <span><i class="bi bi-journal-text"></i> Recent Audit Events</span>
+    <a href="{{ url_for('audit.audit_log_view') }}"
+       class="btn btn-sm btn-outline-secondary ms-auto">Full Log</a>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead><tr>
+        <th class="ps-3">Time</th><th>User</th><th>Action</th><th>IP</th>
+      </tr></thead>
+      <tbody>
+      {% for e in recent_audit %}
+      <tr>
+        <td class="ps-3 text-muted small">{{ e.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td class="small">{{ e.user.username if e.user else '—' }}</td>
+        <td><code class="text-info">{{ e.action }}</code></td>
+        <td class="text-muted small font-monospace">{{ e.ip_address }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

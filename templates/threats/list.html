@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Threats – {{ project.name }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item">
+    <a href="{{ url_for('projects.project_detail', pid=project.id) }}">{{ project.name[:20] }}</a>
+  </li>
+  <li class="breadcrumb-item active">Threat Model</li>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h4 class="mb-0 fw-semibold"><i class="bi bi-diagram-3 me-2"></i>STRIDE Threat Model</h4>
+  <a href="{{ url_for('threats.new_threat', pid=project.id) }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>New Threat
+  </a>
+</div>
+
+{% if threats %}
+  {% for cat in stride_list %}
+  {% if grouped.get(cat) %}
+  <div class="card mb-3">
+    <div class="card-header">
+      <span class="stride-pill">{{ cat }}</span>
+      <span class="text-muted small ms-2">{{ grouped[cat]|length }} entr{{ 'y' if grouped[cat]|length == 1 else 'ies' }}</span>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-hover mb-0">
+        <thead><tr>
+          <th class="ps-3">Threat Name</th><th>Priority</th>
+          <th>Status</th><th>Countermeasure</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+        {% for t in grouped[cat] %}
+        <tr>
+          <td class="ps-3 fw-semibold">{{ t.threat_name }}</td>
+          <td>
+            {% if t.priority == 'Critical' %}<span class="badge sev-Critical">Critical</span>
+            {% elif t.priority == 'High' %}<span class="badge sev-High">High</span>
+            {% elif t.priority == 'Medium' %}<span class="badge sev-Medium">Medium</span>
+            {% else %}<span class="badge sev-Low">Low</span>{% endif %}
+          </td>
+          <td>
+            {% if t.status == 'Open' %}<span class="badge bg-danger">Open</span>
+            {% elif t.status == 'Mitigated' %}<span class="badge bg-success">Mitigated</span>
+            {% else %}<span class="badge bg-secondary">{{ t.status }}</span>{% endif %}
+          </td>
+          <td class="text-muted small">
+            {{ (t.countermeasure or '—')[:70] }}{{ '…' if t.countermeasure and t.countermeasure|length > 70 else '' }}
+          </td>
+          <td>
+            <a href="{{ url_for('threats.edit_threat', pid=project.id, tid=t.id) }}"
+               class="btn btn-sm btn-outline-primary py-0"><i class="bi bi-pencil"></i></a>
+            <form method="POST" class="d-inline"
+                  action="{{ url_for('threats.delete_threat', pid=project.id, tid=t.id) }}"
+                  onsubmit="return confirm('Delete threat?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger py-0"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+{% else %}
+<div class="text-center text-muted py-5">
+  <i class="bi bi-diagram-3 d-block" style="font-size:3rem;"></i>
+  <p class="mt-2">No threats modelled yet.</p>
+  <a href="{{ url_for('threats.new_threat', pid=project.id) }}" class="btn btn-primary">Add First Threat</a>
+</div>
+{% endif %}
+{% endblock %}

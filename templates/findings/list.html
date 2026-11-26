@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Findings – {{ project.name }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item">
+    <a href="{{ url_for('projects.project_detail', pid=project.id) }}">{{ project.name[:20] }}</a>
+  </li>
+  <li class="breadcrumb-item active">Findings</li>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h4 class="mb-0 fw-semibold"><i class="bi bi-bug me-2"></i>Security Findings</h4>
+  <a href="{{ url_for('findings.new_finding', pid=project.id) }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>New Finding
+  </a>
+</div>
+
+<!-- Severity summary strip -->
+{% if findings %}
+<div class="row g-2 mb-3">
+  {% for sev in severities %}
+  <div class="col">
+    <div class="card text-center p-2">
+      <div class="fw-bold">
+        <span class="badge sev-{{ sev }}">{{ sev_summary.get(sev, 0) }}</span>
+      </div>
+      <div class="text-muted" style="font-size:.7rem;">{{ sev }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if findings %}
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead><tr>
+        <th class="ps-3">Title</th><th>Severity</th><th>CWE</th>
+        <th>CVSS</th><th>Status</th><th>Date</th><th>Actions</th>
+      </tr></thead>
+      <tbody>
+      {% for f in findings %}
+      <tr>
+        <td class="ps-3">
+          <a href="{{ url_for('findings.finding_detail', pid=project.id, fid=f.id) }}"
+             class="fw-semibold text-decoration-none" style="color:var(--text);">{{ f.title }}</a>
+        </td>
+        <td><span class="badge sev-{{ f.severity }}">{{ f.severity }}</span></td>
+        <td class="text-muted small">{{ f.cwe_id or '—' }}</td>
+        <td class="text-muted small">
+          {{ '%.1f'|format(f.cvss_score) if f.cvss_score is not none else '—' }}
+        </td>
+        <td>
+          {% if f.status == 'Open' %}<span class="badge bg-danger">Open</span>
+          {% elif f.status == 'Resolved' %}<span class="badge bg-success">Resolved</span>
+          {% elif f.status == 'In Progress' %}<span class="badge bg-warning text-dark">In Progress</span>
+          {% else %}<span class="badge bg-secondary">{{ f.status }}</span>{% endif %}
+        </td>
+        <td class="text-muted small">{{ f.created_at.strftime('%Y-%m-%d') }}</td>
+        <td>
+          <a href="{{ url_for('findings.edit_finding', pid=project.id, fid=f.id) }}"
+             class="btn btn-sm btn-outline-primary py-0"><i class="bi bi-pencil"></i></a>
+          <form method="POST" class="d-inline"
+                action="{{ url_for('findings.delete_finding', pid=project.id, fid=f.id) }}"
+                onsubmit="return confirm('Delete this finding?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-danger py-0"><i class="bi bi-trash"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+  <i class="bi bi-bug d-block" style="font-size:3rem;"></i>
+  <p class="mt-2">No findings recorded yet.</p>
+  <a href="{{ url_for('findings.new_finding', pid=project.id) }}" class="btn btn-primary">Report First Finding</a>
+</div>
+{% endif %}
+{% endblock %}

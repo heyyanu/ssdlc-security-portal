@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item"><a href="{{ url_for('projects.list_projects') }}">Projects</a></li>
+  <li class="breadcrumb-item active">{{ project.name[:30] }}</li>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+  <div>
+    <h4 class="mb-1 fw-semibold">{{ project.name }}</h4>
+    <span class="badge bg-secondary me-1">{{ project.phase }}</span>
+    {% if project.status == 'Active' %}<span class="badge bg-success">Active</span>
+    {% elif project.status == 'Completed' %}<span class="badge bg-info text-dark">Completed</span>
+    {% else %}<span class="badge bg-secondary">{{ project.status }}</span>{% endif %}
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('projects.edit_project', pid=project.id) }}"
+       class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil me-1"></i>Edit</a>
+    <form method="POST" action="{{ url_for('projects.delete_project', pid=project.id) }}"
+          onsubmit="return confirm('Delete this project and ALL its data permanently?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+    </form>
+  </div>
+</div>
+
+{% if project.description %}
+<div class="card mb-3 p-3 text-muted">{{ project.description }}</div>
+{% endif %}
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  {% for label, cnt, col, url in [
+    ('Findings', project.findings.count(), 'danger', url_for('findings.list_findings', pid=project.id)),
+    ('Risks',    project.risk_assessments.count(), 'warning', url_for('risks.list_risks', pid=project.id)),
+    ('Threats',  project.threat_models.count(), 'info', url_for('threats.list_threats', pid=project.id)),
+  ] %}
+  <div class="col-sm-4">
+    <a href="{{ url }}" class="card text-center p-3 text-decoration-none d-block">
+      <div class="fs-2 fw-bold text-{{ col }}">{{ cnt }}</div>
+      <div class="text-muted small">{{ label }}</div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Action cards -->
+<div class="row g-3">
+  {% for label, icon, col, url, desc in [
+    ('Security Findings', 'bi-bug',              'danger',  url_for('findings.list_findings', pid=project.id), 'Vulnerabilities & bugs'),
+    ('Risk Assessments',  'bi-exclamation-triangle','warning',url_for('risks.list_risks', pid=project.id),    'Likelihood × impact matrix'),
+    ('STRIDE Threat Model','bi-diagram-3',        'info',   url_for('threats.list_threats', pid=project.id), 'Threat modelling by STRIDE'),
+  ] %}
+  <div class="col-md-4">
+    <a href="{{ url }}" class="card p-3 text-decoration-none d-flex align-items-center gap-3">
+      <i class="bi {{ icon }} fs-2 text-{{ col }}"></i>
+      <div class="flex-grow-1">
+        <div class="fw-semibold" style="color:var(--text);">{{ label }}</div>
+        <div class="text-muted small">{{ desc }}</div>
+      </div>
+      <i class="bi bi-chevron-right text-muted"></i>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

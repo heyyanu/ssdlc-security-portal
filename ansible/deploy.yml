@@ -1,0 +1,256 @@
+---
+- name: Deploy SSDLC Portal to the existing staging EC2 instance
+  hosts: staging
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - vars/main.yml
+
+  vars:
+    image_full_name: "{{ ecr_registry }}/{{ app_name }}:{{ image_tag }}"
+    previous_container_name: "{{ container_name }}-previous"
+
+  pre_tasks:
+    - name: Validate deployment inputs and supported operating system
+      ansible.builtin.assert:
+        that:
+          - >-
+            (ansible_facts['distribution'] == 'Amazon' and
+             ansible_facts['distribution_major_version'] in ['2', '2023']) or
+            ansible_facts['os_family'] == 'Debian'
+          - ecr_registry is defined
+          - aws_region is defined
+          - image_tag is defined
+          - ecr_password_file is defined
+          - ecr_password_file | length > 0
+        fail_msg: >-
+          Supported hosts are Amazon Linux 2, Amazon Linux 2023, Ubuntu and Debian.
+          Jenkins must pass ECR registry, region, image tag and ECR password file.
+
+    - name: Check the temporary ECR password file on the Jenkins controller
+      ansible.builtin.stat:
+        path: "{{ ecr_password_file }}"
+      delegate_to: localhost
+      become: false
+      register: ecr_password_file_stat
+      run_once: true
+
+    - name: Validate the ECR password file
+      ansible.builtin.assert:
+        that:
+          - ecr_password_file_stat.stat.exists | default(false)
+          - ecr_password_file_stat.stat.isreg | default(false)
+          - (ecr_password_file_stat.stat.size | default(0) | int) > 0
+        fail_msg: "Jenkins did not provide a non-empty ECR password file."
+      run_once: true
+
+    - name: Install Docker on Amazon Linux 2023
+      ansible.builtin.dnf:
+        name: docker
+        state: present
+        update_cache: true
+      when:
+        - ansible_facts['distribution'] == 'Amazon'
+        - ansible_facts['distribution_major_version'] == '2023'
+
+    - name: Install Docker on Amazon Linux 2
+      ansible.builtin.command:
+        argv: [amazon-linux-extras, install, docker, -y]
+      args:
+        creates: /usr/bin/docker
+      when:
+        - ansible_facts['distribution'] == 'Amazon'
+        - ansible_facts['distribution_major_version'] == '2'
+
+    - name: Install Docker on Ubuntu or Debian
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Ensure Docker service is enabled and running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create persistent application directories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: "{{ app_data_dir }}", owner: "root", group: "root", mode: "0750" }
+        - { path: "{{ app_instance_dir }}", owner: "10001", group: "10001", mode: "0770" }
+
+    - name: Create a persistent application SECRET_KEY once on the EC2 host
+      ansible.builtin.command:
+        argv:
+          - python3
+          - -c
+          - "from pathlib import Path; import secrets; p=Path('{{ app_env_file }}'); p.write_text('SECRET_KEY='+secrets.token_urlsafe(48)+'\\n'); p.chmod(0o600)"
+      args:
+        creates: "{{ app_env_file }}"
+      no_log: true
+      changed_when: true
+
+    - name: Set strict ownership and permissions on the application environment file
+      ansible.builtin.file:
+        path: "{{ app_env_file }}"
+        state: file
+        owner: root
+        group: root
+        mode: "0600"
+
+  tasks:
+    - name: Authenticate to ECR and pull the requested application image
+      block:
+        - name: Log in to ECR using the short-lived Jenkins token
+          ansible.builtin.command:
+            argv:
+              - docker
+              - login
+              - --username
+              - AWS
+              - --password-stdin
+              - "{{ ecr_registry }}"
+            stdin: "{{ lookup('ansible.builtin.file', ecr_password_file) }}"
+            stdin_add_newline: false
+          no_log: true
+          changed_when: true
+
+        - name: Pull the requested image from ECR
+          ansible.builtin.command:
+            argv: [docker, pull, "{{ image_full_name }}"]
+          changed_when: true
+
+      rescue:
+        - name: Stop if ECR authentication or image pull failed
+          ansible.builtin.fail:
+            msg: >-
+              ECR authentication or image pull failed. Verify registry, image tag,
+              IAM permissions and outbound HTTPS connectivity from the EC2 instance.
+
+      always:
+        - name: Remove the ECR login token from the remote Docker configuration
+          ansible.builtin.command:
+            argv: [docker, logout, "{{ ecr_registry }}"]
+          changed_when: false
+          failed_when: false
+          no_log: true
+
+    - name: Remove stale previous-container backup from an earlier completed deployment
+      ansible.builtin.command:
+        argv: [docker, rm, --force, "{{ previous_container_name }}"]
+      changed_when: true
+      failed_when: false
+
+    - name: Inspect the currently running application container
+      ansible.builtin.command:
+        argv: [docker, container, inspect, "{{ container_name }}"]
+      register: existing_container
+      changed_when: false
+      failed_when: false
+
+    - name: Stop the current application container before replacement
+      ansible.builtin.command:
+        argv: [docker, stop, "{{ container_name }}"]
+      when: existing_container.rc == 0
+      changed_when: true
+
+    - name: Rename current application container for rollback
+      ansible.builtin.command:
+        argv: [docker, rename, "{{ container_name }}", "{{ previous_container_name }}"]
+      when: existing_container.rc == 0
+      changed_when: true
+
+    - name: Start and health-check the new application container
+      block:
+        - name: Start the SSDLC Portal container
+          ansible.builtin.command:
+            argv:
+              - docker
+              - run
+              - --detach
+              - --name
+              - "{{ container_name }}"
+              - --restart
+              - unless-stopped
+              - --publish
+              - "0.0.0.0:{{ external_port }}:{{ internal_port }}"
+              - --volume
+              - "{{ app_instance_dir }}:/app/instance"
+              - --env-file
+              - "{{ app_env_file }}"
+              - --env
+              - "APP_ENV={{ deployment_environment }}"
+              - --env
+              - "PORT={{ internal_port }}"
+              - "{{ image_full_name }}"
+          changed_when: true
+
+        - name: Wait for the published application port
+          ansible.builtin.wait_for:
+            host: 127.0.0.1
+            port: "{{ external_port }}"
+            state: started
+            delay: 2
+            timeout: 90
+
+        - name: Wait until the new container health check is healthy
+          ansible.builtin.command:
+            argv: [docker, inspect, "{{ container_name }}"]
+          register: container_health
+          changed_when: false
+          retries: 20
+          delay: 5
+          until: >-
+            container_health.rc == 0 and
+            (container_health.stdout | from_json | first).State.Health.Status == 'healthy'
+
+      rescue:
+        - name: Remove the failed new container
+          ansible.builtin.command:
+            argv: [docker, rm, --force, "{{ container_name }}"]
+          failed_when: false
+          changed_when: true
+
+        - name: Restore the previous container name
+          ansible.builtin.command:
+            argv: [docker, rename, "{{ previous_container_name }}", "{{ container_name }}"]
+          when: existing_container.rc == 0
+          changed_when: true
+
+        - name: Restart the previous application container
+          ansible.builtin.command:
+            argv: [docker, start, "{{ container_name }}"]
+          when: existing_container.rc == 0
+          changed_when: true
+
+        - name: Fail the deployment after attempting rollback
+          ansible.builtin.fail:
+            msg: >-
+              The new application container failed its health check.
+              The previous container was restored when one was available.
+
+    - name: Remove the old container after the new deployment is healthy
+      ansible.builtin.command:
+        argv: [docker, rm, --force, "{{ previous_container_name }}"]
+      when: existing_container.rc == 0
+      changed_when: true
+
+  post_tasks:
+    - name: Print staging deployment details
+      ansible.builtin.debug:
+        msg:
+          - "Deployment completed successfully."
+          - "Application: http://{{ ansible_host }}:{{ external_port }}/"
+          - "Health: http://{{ ansible_host }}:{{ external_port }}/health"
+          - "Container: {{ container_name }}"
+          - "Image: {{ image_full_name }}"
+          - "Persistent SQLite directory: {{ app_instance_dir }}"

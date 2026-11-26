@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item">
+    <a href="{{ url_for('projects.project_detail', pid=project.id) }}">{{ project.name[:20] }}</a>
+  </li>
+  <li class="breadcrumb-item">
+    <a href="{{ url_for('threats.list_threats', pid=project.id) }}">Threats</a>
+  </li>
+  <li class="breadcrumb-item active">{{ title }}</li>
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-8">
+  <div class="card p-4">
+    <h5 class="mb-3 fw-semibold"><i class="bi bi-diagram-3 me-2"></i>{{ title }}</h5>
+
+    <!-- STRIDE quick ref -->
+    <div class="row g-2 mb-4">
+      {% for s, ic, col, desc in [
+        ('S','person-x','danger','Spoofing – impersonating someone'),
+        ('T','pencil-square','warning','Tampering – modifying data'),
+        ('R','clipboard-x','secondary','Repudiation – denying actions'),
+        ('I','eye','info','Info Disclosure – exposing data'),
+        ('D','slash-circle','dark','Denial of Service'),
+        ('E','arrow-up-square','primary','Elevation of Privilege'),
+      ] %}
+      <div class="col-6 col-md-4">
+        <div class="card p-2 h-100" style="font-size:.75rem;">
+          <div class="d-flex align-items-center gap-1 mb-1">
+            <span class="fw-bold text-{{ col }}">{{ s }}</span>
+            <span class="text-muted">{{ desc.split('–')[0] }}</span>
+          </div>
+          <span class="text-muted" style="font-size:.7rem;">{{ desc.split('–')[1] if '–' in desc else '' }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="mb-3">
+        <label class="form-label">Threat Name <span class="text-danger">*</span></label>
+        {{ form.threat_name(class="form-control"+(" is-invalid" if form.threat_name.errors else ""),
+                            placeholder="e.g. Attacker impersonates admin via stolen token") }}
+        {% for e in form.threat_name.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label class="form-label">STRIDE Category</label>
+          {{ form.stride_cat(class="form-select") }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Priority</label>
+          {{ form.priority(class="form-select") }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Status</label>
+          {{ form.status(class="form-select") }}
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Description</label>
+        {{ form.description(class="form-control", rows=3) }}
+      </div>
+      <div class="mb-4">
+        <label class="form-label">Countermeasure</label>
+        {{ form.countermeasure(class="form-control", rows=3,
+                               placeholder="Describe how this threat is mitigated…") }}
+      </div>
+      <div class="d-flex gap-2">
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('threats.list_threats', pid=project.id) }}"
+           class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+</div>
+{% endblock %}

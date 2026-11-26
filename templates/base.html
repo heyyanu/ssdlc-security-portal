@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="robots" content="noindex,nofollow">
+  <title>{% block title %}SSDLC Portal{% endblock %} – SSDLC</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <style>
+    /* ── Design tokens ───────────────────────────────────────────────────── */
+    :root {
+      --bg:          #0d1117;
+      --surface:     #161b22;
+      --surface2:    #1c2129;
+      --border:      #30363d;
+      --text:        #e6edf3;
+      --muted:       #8b949e;
+      --accent:      #238636;
+      --accent-h:    #2ea043;
+      --blue:        #388bfd;
+      --yellow:      #d29922;
+      --red:         #da3633;
+      --green:       #3fb950;
+      --purple:      #8957e5;
+      --sidebar-w:   252px;
+    }
+
+    /* ── Reset / base ────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: .9rem;
+    }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { color: #79c0ff; background: rgba(110,118,129,.2); padding:.1em .3em; border-radius:4px; }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────── */
+    #sidebar {
+      position: fixed; inset: 0 auto 0 0;
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      z-index: 200;
+      transition: transform .25s ease;
+    }
+    #sidebar .brand {
+      padding: 1rem 1.1rem .9rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: .55rem;
+      font-weight: 700; font-size: 1.05rem; color: #58a6ff;
+      text-decoration: none;
+    }
+    #sidebar .brand .shield { font-size: 1.3rem; }
+    .nav-sec {
+      font-size: .68rem; font-weight: 700; color: #484f58;
+      text-transform: uppercase; letter-spacing: .07em;
+      padding: .9rem 1.1rem .3rem;
+    }
+    .nav-link {
+      display: flex; align-items: center; gap: .55rem;
+      padding: .5rem .9rem; margin: 1px .5rem;
+      border-radius: 6px; color: var(--muted); font-size: .875rem;
+      transition: background .15s, color .15s;
+    }
+    .nav-link:hover  { background: rgba(88,166,255,.08); color: #58a6ff; text-decoration: none; }
+    .nav-link.active { background: rgba(88,166,255,.12); color: #58a6ff; font-weight: 600; }
+    .nav-link .bi   { font-size: 1rem; flex-shrink: 0; }
+
+    #sidebar .user-box {
+      margin-top: auto;
+      border-top: 1px solid var(--border);
+      padding: .9rem 1.1rem;
+    }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .85rem; flex-shrink: 0;
+    }
+
+    /* ── Main wrap ───────────────────────────────────────────────────────── */
+    #main {
+      margin-left: var(--sidebar-w);
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Topbar ──────────────────────────────────────────────────────────── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: .6rem 1.75rem;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar .breadcrumb { margin: 0; background: none; padding: 0; }
+    .breadcrumb-item+.breadcrumb-item::before { color: var(--muted); }
+
+    /* ── Page body ───────────────────────────────────────────────────────── */
+    .page-body { padding: 1.6rem 1.75rem; flex: 1; }
+
+    /* ── Cards ───────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .card-header {
+      background: var(--surface2); border-bottom: 1px solid var(--border);
+      font-weight: 600; padding: .75rem 1rem;
+      display: flex; align-items: center; gap: .5rem;
+    }
+
+    /* ── Stat tiles ───────────────────────────────────────────────────────── */
+    .stat-tile {
+      border-left: 3px solid var(--border);
+      transition: transform .2s, box-shadow .2s;
+    }
+    .stat-tile:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,.3); }
+    .stat-tile.red    { border-color: var(--red);    }
+    .stat-tile.yellow { border-color: var(--yellow); }
+    .stat-tile.blue   { border-color: var(--blue);   }
+    .stat-tile.green  { border-color: var(--green);  }
+
+    /* ── Severity badges ─────────────────────────────────────────────────── */
+    .sev-Critical      { background:#da3633; color:#fff; }
+    .sev-High          { background:#e3b341; color:#000; }
+    .sev-Medium        { background:#388bfd; color:#fff; }
+    .sev-Low           { background:#3fb950; color:#000; }
+    .sev-Informational { background:#6e7681; color:#fff; }
+
+    /* ── Risk level colours ──────────────────────────────────────────────── */
+    .risk-Critical { color: var(--red);    font-weight: 700; }
+    .risk-High     { color: var(--yellow); font-weight: 700; }
+    .risk-Medium   { color: var(--blue);   font-weight: 600; }
+    .risk-Low      { color: var(--green);  }
+
+    /* ── Forms ───────────────────────────────────────────────────────────── */
+    .form-control, .form-select {
+      background: var(--bg); border-color: var(--border); color: var(--text);
+    }
+    .form-control:focus, .form-select:focus {
+      background: var(--bg); border-color: var(--blue); color: var(--text);
+      box-shadow: 0 0 0 .2rem rgba(56,139,253,.25);
+    }
+    .form-control::placeholder { color: var(--muted); }
+    .form-label { font-weight: 500; font-size: .85rem; color: var(--muted); }
+
+    /* ── Tables ──────────────────────────────────────────────────────────── */
+    .table { --bs-table-bg: transparent; --bs-table-color: var(--text); }
+    .table th {
+      color: var(--muted); font-size: .78rem;
+      text-transform: uppercase; letter-spacing: .05em;
+      font-weight: 600; border-bottom-color: var(--border) !important;
+    }
+    .table td { border-color: var(--border); vertical-align: middle; }
+    .table-hover>tbody>tr:hover>td { background: rgba(88,166,255,.05); }
+
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .btn-primary  { background: var(--accent);  border-color: var(--accent);  }
+    .btn-primary:hover { background: var(--accent-h); border-color: var(--accent-h); }
+
+    /* ── STRIDE pill ─────────────────────────────────────────────────────── */
+    .stride-pill {
+      display: inline-block; padding: .15em .55em;
+      border-radius: 1em; font-size: .72rem; font-weight: 700;
+      background: rgba(88,166,255,.12); color: #58a6ff;
+      letter-spacing: .03em;
+    }
+
+    /* ── Password strength ───────────────────────────────────────────────── */
+    .pwd-strength { height: 4px; border-radius: 2px; transition: width .3s; }
+
+    /* ── Mobile ──────────────────────────────────────────────────────────── */
+    #menu-toggle { display: none; }
+    @media (max-width: 768px) {
+      #sidebar  { transform: translateX(-100%); }
+      #sidebar.open { transform: none; }
+      #main     { margin-left: 0; }
+      #menu-toggle { display: flex; }
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+{% if current_user.is_authenticated %}
+<!-- ══ Sidebar ══════════════════════════════════════════════════════════════ -->
+<nav id="sidebar">
+  <a class="brand" href="{{ url_for('main.dashboard') }}">
+    <i class="bi bi-shield-lock-fill shield"></i>SSDLC Portal
+  </a>
+
+  <div class="pt-1">
+    <span class="nav-sec">Main</span>
+    <a class="nav-link {% if request.endpoint=='main.dashboard' %}active{% endif %}"
+       href="{{ url_for('main.dashboard') }}">
+      <i class="bi bi-speedometer2"></i>Dashboard
+    </a>
+    <a class="nav-link {% if 'projects' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('projects.list_projects') }}">
+      <i class="bi bi-folder2-open"></i>Projects
+    </a>
+
+    <span class="nav-sec">Security</span>
+    <a class="nav-link {% if 'findings' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('projects.list_projects') }}">
+      <i class="bi bi-bug"></i>Findings
+    </a>
+    <a class="nav-link {% if 'risks' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('projects.list_projects') }}">
+      <i class="bi bi-exclamation-triangle"></i>Risks
+    </a>
+    <a class="nav-link {% if 'threats' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('projects.list_projects') }}">
+      <i class="bi bi-diagram-3"></i>Threat Models
+    </a>
+
+    {% if current_user.role == 'admin' %}
+    <span class="nav-sec">Admin</span>
+    <a class="nav-link {% if 'audit' in (request.endpoint or '') %}active{% endif %}"
+       href="{{ url_for('audit.audit_log_view') }}">
+      <i class="bi bi-journal-text"></i>Audit Log
+    </a>
+    {% endif %}
+  </div>
+
+  <!-- User box -->
+  <div class="user-box">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <div class="avatar">{{ current_user.username[0].upper() }}</div>
+      <div class="overflow-hidden">
+        <div class="fw-semibold text-truncate" style="color:var(--text);">
+          {{ current_user.username }}
+        </div>
+        <div style="font-size:.72rem;color:var(--muted);">{{ current_user.role.title() }}</div>
+      </div>
+    </div>
+    <div class="d-flex gap-1">
+      <a href="{{ url_for('auth.change_password') }}"
+         class="btn btn-sm btn-outline-secondary flex-fill" title="Change password">
+        <i class="bi bi-key"></i>
+      </a>
+      <a href="{{ url_for('auth.logout') }}"
+         class="btn btn-sm btn-outline-danger flex-fill">
+        <i class="bi bi-box-arrow-right"></i> Sign out
+      </a>
+    </div>
+  </div>
+</nav>
+{% endif %}
+
+<!-- ══ Main ════════════════════════════════════════════════════════════════ -->
+<div id="main" {% if not current_user.is_authenticated %}style="margin-left:0"{% endif %}>
+
+  {% if current_user.is_authenticated %}
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="d-flex align-items-center gap-3">
+      <button id="menu-toggle" class="btn btn-sm btn-outline-secondary"
+              onclick="document.getElementById('sidebar').classList.toggle('open')">
+        <i class="bi bi-list"></i>
+      </button>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">
+            <a href="{{ url_for('main.dashboard') }}"><i class="bi bi-house-door"></i></a>
+          </li>
+          {% block breadcrumb %}{% endblock %}
+        </ol>
+      </nav>
+    </div>
+    <span class="badge bg-secondary">{{ current_user.role.title() }}</span>
+  </div>
+  {% endif %}
+
+  <div class="page-body">
+    <!-- Flash messages -->
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% if msgs %}
+    <div class="mb-3">
+      {% for cat, msg in msgs %}
+      <div class="alert alert-{{ cat }} alert-dismissible fade show py-2" role="alert">
+        <i class="bi bi-{% if cat=='danger' %}exclamation-circle{% elif cat=='success' %}check-circle{% elif cat=='info' %}info-circle{% else %}exclamation-triangle{% endif %} me-2"></i>
+        {{ msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Auto-dismiss alerts after 5 s
+  document.querySelectorAll('.alert').forEach(el => {
+    setTimeout(() => { try { new bootstrap.Alert(el).close(); } catch(e){} }, 5000);
+  });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

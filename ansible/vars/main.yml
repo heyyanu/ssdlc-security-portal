@@ -1,0 +1,10 @@
+---
+app_name: "ssdlc-app"
+deployment_environment: "staging"
+image_tag: "latest"
+container_name: "staging-app"
+internal_port: 5000
+external_port: 8081
+app_data_dir: "/opt/ssdlc-app"
+app_instance_dir: "/opt/ssdlc-app/instance"
+app_env_file: "/opt/ssdlc-app/app.env"

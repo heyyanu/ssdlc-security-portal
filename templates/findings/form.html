@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block breadcrumb %}
+  <li class="breadcrumb-item">
+    <a href="{{ url_for('projects.project_detail', pid=project.id) }}">{{ project.name[:20] }}</a>
+  </li>
+  <li class="breadcrumb-item">
+    <a href="{{ url_for('findings.list_findings', pid=project.id) }}">Findings</a>
+  </li>
+  <li class="breadcrumb-item active">{{ title }}</li>
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-lg-9">
+  <div class="card p-4">
+    <h5 class="mb-3 fw-semibold"><i class="bi bi-bug me-2"></i>{{ title }}</h5>
+    <form method="POST" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="mb-3">
+        <label class="form-label">Finding Title <span class="text-danger">*</span></label>
+        {{ form.title(class="form-control"+(" is-invalid" if form.title.errors else ""),
+                      placeholder="e.g. SQL Injection in login endpoint") }}
+        {% for e in form.title.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label class="form-label">Severity <span class="text-danger">*</span></label>
+          {{ form.severity(class="form-select"+(" is-invalid" if form.severity.errors else "")) }}
+          {% for e in form.severity.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Status</label>
+          {{ form.status(class="form-select") }}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">CWE ID</label>
+          {{ form.cwe_id(class="form-control"+(" is-invalid" if form.cwe_id.errors else ""),
+                         placeholder="CWE-89") }}
+          {% for e in form.cwe_id.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          <div class="form-text">Format: CWE-NNN</div>
+        </div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label">CVSS Score <small class="text-muted">(0.0 – 10.0)</small></label>
+          {{ form.cvss_score(class="form-control"+(" is-invalid" if form.cvss_score.errors else ""),
+                              type="number", step="0.1", min="0", max="10",
+                              placeholder="7.5") }}
+          {% for e in form.cvss_score.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Affected Component</label>
+          {{ form.affected_component(class="form-control",
+                                     placeholder="e.g. /api/v1/login, UserAuth module") }}
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Description <span class="text-danger">*</span></label>
+        {{ form.description(class="form-control"+(" is-invalid" if form.description.errors else ""),
+                            rows=4, placeholder="Describe the vulnerability, what it allows an attacker to do…") }}
+        {% for e in form.description.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Steps to Reproduce</label>
+        {{ form.steps_to_reproduce(class="form-control", rows=4,
+                                   placeholder="1. Send request…\n2. Observe…") }}
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label">Recommendation</label>
+        {{ form.recommendation(class="form-control", rows=3,
+                               placeholder="How should this be fixed? e.g. Use parameterised queries…") }}
+      </div>
+
+      <div class="d-flex gap-2">
+        {{ form.submit(class="btn btn-primary") }}
+        <a href="{{ url_for('findings.list_findings', pid=project.id) }}"
+           class="btn btn-outline-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+</div>
+{% endblock %}

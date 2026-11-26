@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Create Account{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-center" style="min-height:85vh;">
+  <div style="width:100%;max-width:480px;">
+    <div class="text-center mb-4">
+      <i class="bi bi-person-plus-fill" style="font-size:2.8rem;color:#58a6ff;"></i>
+      <h2 class="fw-bold mt-2 mb-0">Create Account</h2>
+    </div>
+
+    <div class="card p-4 shadow-lg">
+      <form method="POST" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Username</label>
+            {{ form.username(class="form-control"+(" is-invalid" if form.username.errors else ""),
+                             placeholder="e.g. jane_doe") }}
+            {% for e in form.username.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Role</label>
+            {{ form.role(class="form-select") }}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Email address</label>
+          {{ form.email(class="form-control"+(" is-invalid" if form.email.errors else ""),
+                        placeholder="user@example.com") }}
+          {% for e in form.email.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Password</label>
+          {{ form.password(class="form-control"+(" is-invalid" if form.password.errors else ""),
+                           id="pwd-new", placeholder="Min 12 chars…") }}
+          {% for e in form.password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+        </div>
+
+        <!-- Strength meter -->
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted" style="font-size:.72rem;">Strength</span>
+            <span id="str-label" class="text-muted" style="font-size:.72rem;">—</span>
+          </div>
+          <div style="background:var(--border);border-radius:2px;height:4px;">
+            <div id="str-bar" class="pwd-strength" style="width:0%;background:var(--red);"></div>
+          </div>
+          <ul class="mt-2 mb-0 ps-3" style="font-size:.75rem;color:var(--muted);">
+            <li id="c-len">At least 12 characters</li>
+            <li id="c-upper">Uppercase letter</li>
+            <li id="c-lower">Lowercase letter</li>
+            <li id="c-digit">Digit</li>
+            <li id="c-spec">Special character  (!@#$…)</li>
+          </ul>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">Confirm Password</label>
+          {{ form.confirm(class="form-control"+(" is-invalid" if form.confirm.errors else "")) }}
+          {% for e in form.confirm.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold">
+          <i class="bi bi-person-check me-1"></i>Create Account
+        </button>
+      </form>
+
+      <div class="text-center mt-3 text-muted small">
+        Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const checks = {
+  'c-len':   v => v.length >= 12,
+  'c-upper': v => /[A-Z]/.test(v),
+  'c-lower': v => /[a-z]/.test(v),
+  'c-digit': v => /\d/.test(v),
+  'c-spec':  v => /[!@#$%^&*()\-_=+\[\]{};:'",.<>?\/\\|`~]/.test(v),
+};
+const colors = ['#da3633','#e3b341','#e3b341','#388bfd','#3fb950'];
+const labels = ['','Weak','Fair','Good','Strong'];
+
+document.getElementById('pwd-new').addEventListener('input', function() {
+  const v = this.value;
+  let score = 0;
+  for (const [id, fn] of Object.entries(checks)) {
+    const ok = fn(v);
+    const el = document.getElementById(id);
+    el.style.color = ok ? '#3fb950' : 'var(--muted)';
+    if (ok) score++;
+  }
+  const bar = document.getElementById('str-bar');
+  bar.style.width = (score * 20) + '%';
+  bar.style.background = colors[score - 1] || colors[0];
+  document.getElementById('str-label').textContent = labels[score] || '—';
+});
+</script>
+{% endblock %}
