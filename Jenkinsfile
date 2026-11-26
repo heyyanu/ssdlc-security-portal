@@ -8,7 +8,7 @@ pipeline {
         timeout(time: 60, unit: 'MINUTES')
     }
 
-
+    stages {
         stage('Checkout') {
             steps {
                 // Remove stale files and previous virtual environments.
@@ -170,45 +170,22 @@ PYEOF
                 sh '''
                     set -eu
 
-                    echo "========== JENKINS WORKSPACE DEBUG =========="
-
-                    echo "Current directory:"
-                    pwd
-
-                    echo "Current Git commit:"
-                    git rev-parse HEAD
-
-                    echo "Latest requirements files:"
-                    find . -maxdepth 4 -type f \
-                        -name 'requirements*.txt' -print
-
-                    echo "Root directory:"
-                    ls -la
-
-                    echo "Checking requirements-dev.txt..."
-
-                    if [ ! -f requirements-dev.txt ]; then
-                        echo "ERROR: requirements-dev.txt missing from Jenkins workspace"
-
-                        echo "Searching entire workspace:"
-                        find . -type f -name 'requirements-dev.txt' -print
-
+                    test -s requirements.txt || {
+                        echo "ERROR: requirements.txt is missing or empty" >&2
                         exit 1
-                    fi
-
-                    echo "requirements-dev.txt FOUND"
-
-                    echo "Installing dependencies..."
+                    }
+                    test -s requirements-dev.txt || {
+                        echo "ERROR: requirements-dev.txt is missing or empty" >&2
+                        exit 1
+                    }
 
                     if [ ! -x .venv/bin/python ]; then
                         python3 -m venv .venv
                     fi
 
                     .venv/bin/python -m pip install --upgrade pip
-
                     .venv/bin/python -m pip install -r requirements-dev.txt
-
-                    .venv/bin/python -m py_compile run.py
+                    .venv/bin/python -m py_compile run.py wsgi.py
 
                     echo "Build successful!"
                 '''
@@ -561,17 +538,17 @@ control 'container-non-root-user' do
   end
 end
 
-# Control 4: SSH password authentication must be disabled
+# Control 5: Check the effective SSH daemon configuration with sudo.
 control 'ssh-password-auth-disabled' do
   impact 0.7
   title 'SSH password authentication is disabled'
   desc 'Only key-based SSH authentication is permitted on the staging host.'
-  describe sshd_config do
-    its('PasswordAuthentication') { should eq 'no' }
+  describe command("sudo -n sshd -T | grep -i '^passwordauthentication no$'") do
+    its('exit_status') { should eq 0 }
   end
 end
 
-# Control 5: Container port must be listening
+# Control 6: Container port must be listening
 control 'app-port-listening' do
   impact 1.0
   title 'Application port 8081 is listening'
