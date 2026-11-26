@@ -1,1 +1,0 @@
-# ssdlc-security-portal
