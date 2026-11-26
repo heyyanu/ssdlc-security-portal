@@ -8,20 +8,55 @@ pipeline {
         timeout(time: 60, unit: 'MINUTES')
     }
 
-    stages {
+
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/heyyanu/ssdlc-cicd-pipeline.git'
+                // Remove stale files and previous virtual environments.
+                deleteDir()
+
+                // Reuse the repository and credentials configured
+                // under Pipeline > Pipeline script from SCM.
+                checkout scm
+
                 script {
                     env.IMAGE_TAG = sh(
                         script: 'git rev-parse --short=7 HEAD',
                         returnStdout: true
                     ).trim()
+
                     echo "Building image tag: ${env.IMAGE_TAG}"
                 }
+
+                // Fail immediately if the correct application files
+                // are not present in the committed repository.
+                sh '''
+                    set -eu
+
+                    echo "========== CLEAN CHECKOUT VERIFICATION =========="
+
+                    pwd
+                    git remote -v
+                    git rev-parse HEAD
+
+                    echo "Requirements files in Git commit:"
+                    git ls-tree -r --name-only HEAD | grep 'requirements'
+
+                    test -s requirements.txt || {
+                        echo "ERROR: requirements.txt missing"
+                        exit 1
+                    }
+
+                    test -s requirements-dev.txt || {
+                        echo "ERROR: requirements-dev.txt missing from checked-out commit"
+                        exit 1
+                    }
+
+                    echo "Both requirements files found."
+                    echo "Clean checkout successful."
+                '''
             }
         }
+
 
         stage('Install Security Tools') {
             steps {
